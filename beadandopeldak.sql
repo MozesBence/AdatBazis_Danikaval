@@ -1,5 +1,5 @@
 
-----Új mező beszúrása egy olyan táblába, ahol nincs auto_increment
+----Új mező beszúrása egy olyan táblába, ahol nincs auto_increment --az igazgatósághoz, úgy jön ki jól
 
 INSERT INTO megnevezes VALUES((SELECT m.id
 FROM megnevezes m
@@ -55,10 +55,8 @@ WHERE a.kat_kod != 5 AND a.ar<ANY(select a.ar
 								WHERE a.kat_kod=5)
 
 --Összetett lekérdezés, ahol az allekérdezés, mint tábla fog szerepelni
-SELECT sz.nev
-FROM szemely sz
-WHERE sz.id not in(SELECT f.szemelyid
-		FROM  fordito f)
+
+--IDK??
 
 
 --Egyszerű csoportosító lekérdezés + aggregátum függvények + INNER JOIN kapcsolattal, csoportosítás előtti feltétellel.
