@@ -31,15 +31,28 @@ WHERE m.hossz<all(select m.hossz
             where m.maxletszam=3)
 
 --8--Összetett lekérdezés, ahol az allekérdezés, mint tábla fog szerepelni
---??
+--Írasd ki melyik diáknak volt a legkevesebb érvényes munkája,ahol allekérdezés ,ami egy tábla, segítségével fogsz dolgozni.  --KJÉSZ--
+SELECT d.nev
+from diak d,
+(SELECT j.diakid as azon
+	FROM jelentkezes j
+ 	WHERE j.ervenyes = "True"
+    group by j.diakid
+    order BY Count(j.diakid) desc
+	limit 1
+) j
+where d.id = j.azon
 
 --10--Egyszerű csoportosító lekérdezés + aggregátum függvények + INNER JOIN kapcsolattal, csoportosítás utáni feltétellel
-SELECT t.nev, m.darab
-FROM targy t inner join (SELECT t.kategoria as kat ,count(j.id) as darab
-						FROM targy t inner join jegy j on t.id = j.targyid
-						group by t.kategoria
-						order by darab								--itt nem tom mit jelenthet a csop után szov rá kell kérdezni.
-						limit 1) m on t.kategoria = m.kat
+--IRASD KI MEIK ISKOLAI közösség munkának van/volt több mint 50 diák munkása --KÉSZ--
+select t.nev, Count(d.id) as diakszam
+from tevekenyseg t 
+    inner join munka m on m.tevekenysegid = t.id
+    inner join jelentkezes j on j.munkaid = m.id
+    inner join diak d on d.id = j.diakid
+where t.iskolai ="True"
+group by t.id
+having diakszam>50
 
 --12--Választó lekérdezés LEFT JOIN kapcsolattal + csoportsítás  --KÉSZ--
 --Írasd ki mennyien teljesítettek egyes munkahosszban
