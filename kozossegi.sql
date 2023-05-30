@@ -1,12 +1,12 @@
 --2--Összetett lekérdezés, ahol az allekérdezés, mint érték szerepeljen
 
---Add meg azoknak a diákoknak a nevét akik ugyanabba az osztályyba járnak mint a legelső azonosítójú  diák  --KÉSZ--
---(Ő is kerüljön bele)
+--Add meg az első diák nevét akinek mind a 3 pont nem elfogadott (ervenyes, elfogadva, teljesitve = False)   --KÉSZ--
 
 select d.nev
 from diak d
-where d.osztaly =(select d.osztaly
-                    from diak d
+where d.id =(select j.diakid
+                    from jelentkezes j
+                    where j.elfogadva = "False" and j.ervenyes = "False" and j.teljesitve = "False"
                     limit 1)
 
 
