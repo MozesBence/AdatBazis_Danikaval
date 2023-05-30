@@ -64,9 +64,9 @@ group by m.hossz
 
 
 --14--Választó lekérdezés LEFT JOIN kapcsolattal + minden adat az egyik táblából --KÉSZ--
---Írassuk ki azokat a munkákat ahol Pék Roland iskolai tevékenységekben dolgozott
+--Írassuk ki azokat a munkákat(munka id) ahol Pék Roland iskolai tevékenységekben dolgozott
 
-select m.id
+select m.id as munkanak_id_ja
 from jelentkezes j left join munka m on j.munkaid = m.id, diak d, tevekenyseg t
 where d.id=j.diakid and m.tevekenysegid=t.id and d.nev = "Pék Roland" and t.iskolai="True"
 
