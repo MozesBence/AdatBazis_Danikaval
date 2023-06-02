@@ -1,113 +1,118 @@
+-- 1. Szúrja be saját magát a diák táblába.- 
+-- Új mező, auto increment nélkül
+insert into diak values((SELECT max(d.id)+1
+						 FROM diak d),"Mózes Bence","11/C")
+--2--Összetett lekérdezés, ahol az allekérdezés, mint érték szerepeljen
+--Add meg azoknak a diákoknak a nevét akik ugyanabba az osztályyba járnak mint a legelső azonosítójú  diák  
+--(Ő is kerüljön bele)
+select d.nev
+from diak d
+where d.osztaly =(select d.osztaly
+                    from diak d
+                    limit 1)
+--3.--Összetett lekérdezés, ahol az allekérdezés, mint érték szerepeljen (többszörösen összetett – legalább két allekérdezés)
+--Adja meg azokat a tevékenységeket és a tevékenységeket végző diákok nevét amit azok végeztek akik ugyanabba az osztályba járnak mint Oláh Soma és a tevékenység max létszáma egyenlő az első fordító munka időtartamával.
+select distinct d.nev,t.nev
+from diak d,munka m,jelentkezes j,tevekenyseg t
+where d.id=j.diakid and j.munkaid=m.id and m.tevekenysegid=t.id and d.osztaly =(select d.osztaly
+																			from diak d
+																			where d.nev="Oláh Soma") and m.maxletszam = (select m.hossz
+																											from tevekenyseg t,munka m																										where m.tevekenysegid=t.id and t.nev="fordítás"
+																											limit 1)
+--4--Összetett lekérdezés, ahol az allekérdezés egy listával tér vissza: IN
+--irasd ki minden igazgaosag nevet ami szerepel a védett területek között --> beszúrt 1 value nem jelenik meg  
+SELECT d.nev
+FROM diak d
+WHERE d.id in (select j.diakid
+                from jelentkezes j )
+                    
+--5.--Összetett lekérdezés, ahol az allekérdezés egy listával tér vissza: NOT IN
+--Add meg azokanak a diákoknak a nevét akik keresztneve D betűvel kezdődik és nem 10. évfolyamosok
 
-----Új mező beszúrása egy olyan táblába, ahol nincs auto_increment --az igazgatósághoz, úgy jön ki jól
+select d.nev,--d.osztaly --KÉSZ
+from diak d
+where d.nev like "D%" and d.nev not in (select d.osztaly 
+                                  from diak d
+                                  where d.osztaly like "10%")
+--6--Összetett lekérdezés, ahol a „minden” feltételt után kerül az allekérdezés (ALL)
+--irasd ki az összes munka azonosítóját ami rövidebb minden 3 maxlétszámú munkánál  
 
-INSERT INTO megnevezes VALUES((SELECT m.id
-FROM megnevezes m
-ORDER BY m.id DESC
-limit 1)+1,"kátyú mélyítés")
+SELECT m.id
+FROM munka m
+WHERE m.hossz<all(select m.hossz
+            from munka m
+            where m.maxletszam=3)
+--7--Összetett lekérdezés, ahol a „bármelyik” feltételt után kerül az allekérdezés (ANY)
+--Add meg azokat a tevékenységeket ha van amit úgy végeztek el hogy a maxlétszáma nagyobb mint bármelyik 11.-edikes évfolyamből elvégzett munka maxlétszáma																																	
+select distinct m.tevekenysegid
+from tevekenyseg t,munka m
+where t.id=m.tevekenysegid and m.maxletszam>any(select m.maxletszam
+												from diak d,munka m,jelentkezes j,tevekenyseg t
+												where d.id=j.diakid and j.munkaid=m.id and m.tevekenysegid=t.id and m.maxletszam=10 and t.iskolai="True")
+--8--Összetett lekérdezés, ahol az allekérdezés, mint tábla fog szerepelni
+--Írasd ki melyik diáknak volt a legkevesebb érvényes munkája,ahol allekérdezés ,ami egy tábla, segítségével fogsz dolgozni.  
+SELECT d.nev
+from diak d,
+(SELECT j.diakid as azon
+	FROM jelentkezes j
+ 	WHERE j.ervenyes = "True"
+    group by j.diakid
+    order BY Count(j.diakid) desc
+	limit 1
+) j
+where d.id = j.azon
+--9 Egyszerű csoportosító lekérdezés + aggregátum függvények + INNER JOIN kapcsolattal, csoportosítás előtti feltétellel
+--Írasd azoknak a tevékenységeknek az átlagát (órahossz),amelyek az iskolához köthetőek
+select avg(m.hossz),t.nev
+from tevekenyseg t 
+    inner join munka m on m.tevekenysegid = t.id
+    inner join jelentkezes j on j.munkaid = m.id
+    inner join diak d on d.id = j.diakid
+where t.iskolai="True" 
+group by m.tevekenysegid
+--10--Egyszerű csoportosító lekérdezés + aggregátum függvények + INNER JOIN kapcsolattal, csoportosítás utáni feltétellel
+--IRASD KI MEIK ISKOLAI közösség munkának van/volt több mint 50 diák munkása 
+select t.nev, Count(d.id) as diakszam
+from tevekenyseg t 
+    inner join munka m on m.tevekenysegid = t.id
+    inner join jelentkezes j on j.munkaid = m.id
+    inner join diak d on d.id = j.diakid
+where t.iskolai ="True"
+group by t.id
+having diakszam>50
+--11--Választó lekérdezés LEFT JOIN kapcsolattal + csak az egyik tábla adatai
+--Írja ki azokat a diákokat akik még nem jelentkeztek diákmunkára.
+select d.nev
+from diak d left join jelentkezes j on j.diakid=d.id
+where j.diakid is null
+--12--Választó lekérdezés LEFT JOIN kapcsolattal + csoportsítás  
+--Írasd ki mennyien teljesítettek egyes munkahosszban
+select Count(j.teljesitve),m.hossz
+from jelentkezes j LEFT join munka m on j.munkaid = m.id
+group by m.hossz
+--13--Választó lekérdezés LEFT JOIN kapcsolattal + több táblával --Ide kell 
+--Írasd ki az osztályok által elvégzett órák hosszát azokból a tevékenységekből amelyeket nem az iskolában végzett
+select d.osztaly,t.nev,sum(m.hossz)
+from diak d left join jelentkezes j on d.id=j.diakid
+	left join munka m on j.munkaid=m.id
+	left join tevekenyseg t on m.tevekenysegid=t.id
+where t.iskolai="False"
+group by d.osztaly
+--14--Választó lekérdezés LEFT JOIN kapcsolattal + minden adat az egyik táblából 
+--Írassuk ki azokat a munkákat ahol Pék Roland iskolai tevékenységekben dolgozott
+select m.id
+from jelentkezes j left join munka m on j.munkaid = m.id, diak d, tevekenyseg t
+where d.id=j.diakid and m.tevekenysegid=t.id and d.nev = "Pék Roland" and t.iskolai="True"
+--15.--Összetett lekérdezés UNION (Full Outer Join) segítségével.
+--Írja ki azokat a diákokat,akik Oláh Soma osztálytársai és nem jelentkeztek munkára.
+select d.nev
+from diak d
+where d.osztaly=(select d.osztaly
+				from diak d
+				where d.nev="Oláh Soma")
+				
+union
 
---vagy
-insert into vendeg values((select max(v.id)
-							from vendeg v)+1,"Név")
-							
-----Összetett lekérdezés, ahol az allekérdezés, mint érték szerepeljen
-
-
-								
---Összetett lekérdezés, ahol az allekérdezés, mint érték szerepeljen (többszörösen összetett – legalább két allekérdezés)
-SELECT h.nev
-from helyszin h
-where h.megyeid in(SELECT m.id
-					FROM helyszin h 
-						inner join megye m on m.id= h.megyeid
-						inner join torony t on t.helyszinid = h.id --csak inner joinosat találtam
-					WHERE t.teljesitmeny =(SELECT max(t.teljesitmeny)
-											from torony t))
-
---Összetett lekérdezés, ahol az allekérdezés egy listával tér vissza: IN
-
-SELECT distinct sz.nev --hosszú tudunk könnyebbet írni sokkal, de most nem volt kedvem példába.
-FROM szemely sz, fordito f, nyelv ny
-WHERE sz.id = f.szemelyid and  f.nyelvid=ny.id and ny.cnyelv in (SELECT ny.cnyelv
-					FROM szemely sz, fordito f, nyelv ny
-					WHERE sz.id = f.szemelyid and  f.nyelvid=ny.id AND sz.nev = "Szőke Mátyás")
-
---Összetett lekérdezés, ahol az allekérdezés egy listával tér vissza: NOT IN
-SELECT sz.nev
-FROM szemely sz
-WHERE sz.id not in(SELECT f.szemelyid
-		FROM  fordito f)
-
---Összetett lekérdezés, ahol a „minden” feltételt után kerül az allekérdezés (ALL)
-SELECT s.nev
-FROM ar a, suti s
-WHERE a.sutiid = s.id and
-		s.tipus = "torta" and 
-		a.ertek<all(SELECT a.ertek
-					FROM tartalom t, ar a, suti s
-					where a.sutiid = s.id and t.sutiid = s.id and t.mentes = "G" )
-
---Összetett lekérdezés, ahol a „bármelyik” feltételt után kerül az allekérdezés (ANY)
-SELECT a.nev
-FROM aru a
-WHERE a.kat_kod != 5 AND a.ar<ANY(select a.ar
-								FROM aru a
-								WHERE a.kat_kod=5)
-
---Összetett lekérdezés, ahol az allekérdezés, mint tábla fog szerepelni
-
---IDK??
-
-
---Egyszerű csoportosító lekérdezés + aggregátum függvények + INNER JOIN kapcsolattal, csoportosítás előtti feltétellel.
-SELECT t.kategoria,count(j.id) as darab
-FROM targy t inner join jegy j on t.id = j.targyid
-group by t.kategoria																
-order by darab
-limit 1
-
-
---Egyszerű csoportosító lekérdezés + aggregátum függvények + INNER JOIN kapcsolattal, csoportosítás utáni feltétellel
-SELECT t.nev, m.darab
-FROM targy t inner join (SELECT t.kategoria as kat ,count(j.id) as darab
-						FROM targy t inner join jegy j on t.id = j.targyid
-						group by t.kategoria
-						order by darab								--itt nem tom mit jelenthet a csop után szov rá kell kérdezni.
-						limit 1) m on t.kategoria = m.kat
-
---Választó lekérdezés LEFT JOIN kapcsolattal + csak az egyik tábla adatai
-SELECT m.nev
-from megnevezes m left join korlatozas k on m.id=k.megnevid
-where k.megnevid is NULL
-
---Választó lekérdezés LEFT JOIN kapcsolattal + csoportsítás
-select f.cim
-from ((vendeg v inner join jegy j on v.id = j.vendegId)
-				inner join vetites vet on vet.id =j.vetitesId)
-				right join film f on f.id = vet.filmId
-where v.nev = "Antal Bendegúz"
-group by f.cim				--ennél tudunk könnyebbet :,I  csak erre találtam group by osat
-
---Választó lekérdezés LEFT JOIN kapcsolattal + több táblával
-select ny.nev
-FROM kapcsolo k left join nyersanyag ny on k.nyersanyagid = ny.id 
-				left join telek t on k.telekid =t.id
-where t.telepules = "Vecsés"
-
-
---Választó lekérdezés LEFT JOIN kapcsolattal + minden adat az egyik táblából
-
---???
-
---Összetett lekérdezés UNION (Full Outer Join) segítségével.
-SELECT m.nev, mer.nev
-FROM megnevezes m 
-	left join korlatozas k on m.id = k.megnevid
-	left join mertek mer on mer.id = k.mertekid
-	
-union	
-	
-SELECT m.nev, mer.nev
-from mertek mer 
-	left join korlatozas k on mer.id = k.mertekid
-	left join megnevezes m on m.id = k.megnevid
+select d.nev
+from diak d left join jelentkezes j on j.diakid=d.id
+where j.diakid is null
